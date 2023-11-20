@@ -11,5 +11,6 @@ public record CarCameraEvent(String carID,
                              String sensorProviderID,
                              String sensorNdl,
                              Float plateConfidence,
-                             String carMoveDirection) {
+                             String carMoveDirection) implements CarCameraEventBuilder.With {
+
 }

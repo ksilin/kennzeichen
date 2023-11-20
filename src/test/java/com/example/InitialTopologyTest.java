@@ -2,15 +2,12 @@ package com.example;
 
 import io.quarkus.test.junit.QuarkusTest;
 
-import org.apache.kafka.common.serialization.Serde;
-import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
-import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Produced;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.Properties;
 
 @QuarkusTest
@@ -20,6 +17,8 @@ static String inputTopicName = "carCameraEvents";
 static String outputTopicName = "carEventNotifications";
 
     static final Properties props = new Properties();
+
+    Logger log = Logger.getLogger(InitialTopologyTest.class);
 
     @BeforeAll
     static void beforeAll(){
@@ -31,31 +30,27 @@ static String outputTopicName = "carEventNotifications";
     @Test
     void test() {
 
-        Serde<String> serde = Serdes.String();
-
-
-        var builder = new StreamsBuilder();
-        KStream<String, String> stream = builder.stream(inputTopicName, Consumed.with(serde, serde));
-
-        // logic goes here
-
-        stream.to(outputTopicName, Produced.with(serde, serde));
-        Topology topology = builder.build();
+       Topology topology = CarCamEventTopologyBuilder.createTopoology(inputTopicName, outputTopicName);
 
         System.out.println(topology.describe().toString());
 
-
-
         var testDriver = new TopologyTestDriver(topology, props);
 
-        TestInputTopic<String, String> inputTopic = testDriver.createInputTopic(inputTopicName, serde.serializer(), serde.serializer());
+        TestInputTopic<String, CarCameraEvent> inputTopic = testDriver.createInputTopic(inputTopicName, CarCamEventTopologyBuilder.stringSerde.serializer(), CarCamEventTopologyBuilder.carCameraEventSerde.serializer());
 
-        TestOutputTopic<String, String> outputTopic = testDriver.createOutputTopic(outputTopicName, serde.deserializer(), serde.deserializer());
+        TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, CarCamEventTopologyBuilder.stringSerde.deserializer(), CarCamEventTopologyBuilder.carStateChangedSerde.deserializer());
 
-        inputTopic.pipeInput("hi", "world");
+        long now = Instant.EPOCH.toEpochMilli();
+
+        var event = CarCameraEventBuilder.CarCameraEvent("123", "update", "SDFPKSDSE", "DEU", now, "front", "FFF", 0.6f, "out");
+
+        inputTopic.pipeInput("hi",event, now);
+        inputTopic.pipeInput("hi",event, now + 1000);
+        inputTopic.pipeInput("hi",event, now + 2000);
+        inputTopic.pipeInput("hi",event, now + 3000);
 
         var kvs = outputTopic.readKeyValuesToList();
-        kvs.forEach( k -> System.out.println(k));
+        kvs.forEach( k -> log.info(k.toString()));
 
     }
 }
