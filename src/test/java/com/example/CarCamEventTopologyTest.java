@@ -22,13 +22,46 @@ static String outputTopicName = "carEventNotifications";
 
     @BeforeAll
     static void beforeAll(){
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "car-camera-stream-processor");
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "car-camera-stream-processor-v0.47");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "test:1234");
+    }
+
+    @Test
+    void plateCarIdDivergenceTest(){
+        Topology topology = CarCamEventTopologyProducer.createTopoology(inputTopicName, outputTopicName);
+
+        var testDriver = new TopologyTestDriver(topology, props);
+
+        TestInputTopic<String, CarCameraEvent> inputTopic = testDriver.createInputTopic(inputTopicName, CarCamEventTopologyProducer.stringSerde.serializer(), CarCamEventTopologyProducer.carCameraEventSerde.serializer());
+
+        TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, CarCamEventTopologyProducer.stringSerde.deserializer(), CarCamEventTopologyProducer.carStateChangedSerde.deserializer());
+
+        long now = Instant.EPOCH.toEpochMilli();
+
+        String carID = "123";
+        String plate = "SDFPKSDSE";
+        var event = CarCameraEventBuilder.CarCameraEvent(carID, "new", plate, "DEU", now, "front", "FFF", 0.6f, "out");
+
+
+        inputTopic.pipeInput("hi",event, now);
+
+        inputTopic.pipeInput("hi",event.withCarState("update"), now + 1000);
+
+
+        String carID2 = "234";
+
+        inputTopic.pipeInput("hi",event.withCarID(carID2).withCarState("update"), now + 2000);
+        String plate2 = "SDJFSJS";
+        inputTopic.pipeInput("hi",event.withPlateUTF8(plate2).withCarState("update"), now + 3000);
+
+
+        var kvs = outputTopic.readKeyValuesToList();
+        kvs.forEach( k -> log.info(k.toString()));
     }
 
 
     @Test
-    void test() {
+    void initTest() {
 
        Topology topology = CarCamEventTopologyProducer.createTopoology(inputTopicName, outputTopicName);
 

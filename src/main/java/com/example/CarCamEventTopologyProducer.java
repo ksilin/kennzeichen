@@ -22,15 +22,14 @@ public class CarCamEventTopologyProducer {
     public static final Serde<String> stringSerde = Serdes.String();
 
     public static final String PER_PLATE_STORE = "per_plate_store";
-    public static final String PER_CARID_STORE = "per_carid_store";
     static public Topology createTopoology(String inputTopicName, String outputTopicName){
 
-        KeyValueBytesStoreSupplier keyValueBytesStoreSupplier = Stores.persistentKeyValueStore(PER_PLATE_STORE);
+        KeyValueBytesStoreSupplier perPlateStoreSupplier = Stores.persistentKeyValueStore(PER_PLATE_STORE);
 
-        StoreBuilder<KeyValueStore<String, CarCamEventAggregation>> keyValueStoreStoreBuilder = Stores.keyValueStoreBuilder(keyValueBytesStoreSupplier, stringSerde, carCamEventAggregationSerde);
+        StoreBuilder<KeyValueStore<String, CarCamEventAggregation>> perPlateStoreBuilder = Stores.keyValueStoreBuilder(perPlateStoreSupplier, stringSerde, carCamEventAggregationSerde);
 
         var builder = new StreamsBuilder();
-        builder.addStateStore(keyValueStoreStoreBuilder);
+        builder.addStateStore(perPlateStoreBuilder);
 
         KStream<String, CarCameraEvent> stream = builder.stream(inputTopicName, Consumed.with(stringSerde, carCameraEventSerde));
 
