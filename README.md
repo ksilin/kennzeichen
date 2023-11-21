@@ -8,9 +8,17 @@ If you want to learn more about Quarkus, please visit its website: https://quark
 
 `cat database-dump.csv | tail -n+2 | cut -d ',' -f 2- | perl -pe 's/""/"/g' | cut -c 2- | rev | cut -c 3- | rev | jq '.[] | select(.fieldname | contains("event"))' -c > db_clean.jsonl`
 
+* `tail -n+2` to remove the CSV header
+* `cut -d ',' -f 2-` to keep only fields after the first (which is the DB ID we don't need)
+* `perl -pe 's/""/"/g'` to replace empty double quotes with valid double quotes
+* `cut -c 2- | rev |  cut -c 3- | rev` to trim quotes from the beginning and end of fields
+* `jq '.[] | select(.fieldname | contains("event"))'` to select just the event objects, dropping the ones with binary data
 
-`cat db_clean.jsonl | jq '.buffer | { carID: .carID, carState: .carState, plateUTF8: .plateUTF8, plateCountry: .plateCountry }'`
+`cat db_clean.jsonl | jq '.buffer | {carID: .carID | tonumber, carState: .carState, plateUnicode: .plateUnicode, plateConfidence: .plateConfidence | tonumber, carMoveDirection: .carMoveDirection, captureTimestamp: .capture_timestamp | tonumber, sensorNDL: .sensorProviderID | split("_")[0], sensorName: .sensorProviderID | split("_")[1:] | join("_")}' -c`
 
+* `.sensorProviderID | split("_")[0]` splits the `sensorProviderID` field at the underscore and selects the first part.
+*`(split("_") | .[1:] | join("_"))` splits the `sensorProviderID` field at the underscore, selects all parts after the first one, and joins them back together.
+*`captureTimestamp: .capture_timestamp | tonumber` convert the timestamp string to a number
 
 ## Running the application in dev mode
 
