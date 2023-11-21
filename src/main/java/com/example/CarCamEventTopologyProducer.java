@@ -5,14 +5,13 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.kstream.Repartitioned;
+import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
+
+import java.util.Map;
 
 public class CarCamEventTopologyProducer {
 
@@ -38,7 +37,19 @@ public class CarCamEventTopologyProducer {
         KStream<String, CarCameraEvent> stringCarCameraEventKStream = stream.selectKey((k, v) -> v.sensorNdl());
         KStream<String, CarCameraEvent> repartitioned = stringCarCameraEventKStream.repartition(Repartitioned.with(stringSerde, carCameraEventSerde));// add Repartitioned if required
         var peeked = repartitioned.peek((k, v) -> System.out.println("key: " + k + " value: " + v));
-        KStream<String, CarStateChanged> processed = peeked.process(CarCamEventProcessor::new, PER_PLATE_STORE);
+
+        String splitName = "splitProcessor-";
+        BranchedKStream<String, CarCameraEvent> splitProcessor = peeked.split(Named.as(splitName));
+        String lowConfidenceBranchName = "lowConfidenceBranch";
+        BranchedKStream<String, CarCameraEvent> lowConfidenceBranch = splitProcessor
+                .branch((k, v) -> v.plateConfidence() < 0.6f, Branched.withConsumer( (lowConfidenceStream -> lowConfidenceStream.to("lowconfidenceTopic"))));
+        String defaultBranchName = "defaultBranch";
+        Map<String, KStream<String, CarCameraEvent>> highConfidenceBranch = lowConfidenceBranch.defaultBranch(Branched.as(defaultBranchName));
+
+
+        KStream<String, CarCameraEvent> defaultBranch = highConfidenceBranch.get(splitName + defaultBranchName);
+
+        KStream<String, CarStateChanged> processed = defaultBranch.process(CarCamEventProcessor::new, PER_PLATE_STORE);
 
         processed.to(outputTopicName, Produced.with(stringSerde, carStateChangedSerde));
         Topology topology = builder.build();

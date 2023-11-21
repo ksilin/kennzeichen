@@ -12,7 +12,7 @@ public class CarCamEventProcessor implements Processor<String, CarCameraEvent, S
 
     Logger log = Logger.getLogger(CarCamEventProcessor.class);
 
-    private ProcessorContext ctx;
+    private ProcessorContext<String, CarStateChanged> ctx;
     private KeyValueStore<String, CarCamEventAggregation> perPlateStore;
 
     @Override
