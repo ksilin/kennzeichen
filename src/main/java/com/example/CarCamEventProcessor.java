@@ -10,7 +10,7 @@ import java.util.List;
 
 public class CarCamEventProcessor implements Processor<String, CarCameraEvent, String, CarStateChanged> {
 
-Logger log = Logger.getLogger(CarCamEventProcessor.class);
+    Logger log = Logger.getLogger(CarCamEventProcessor.class);
 
     private ProcessorContext ctx;
     private KeyValueStore<String, CarCamEventAggregation> perPlateStore;
@@ -19,7 +19,7 @@ Logger log = Logger.getLogger(CarCamEventProcessor.class);
     public void init(ProcessorContext<String, CarStateChanged> context) {
         Processor.super.init(context);
         ctx = context;
-        perPlateStore = context.getStateStore(CarCamEventTopologyBuilder.PER_PLATE_STORE);
+        perPlateStore = context.getStateStore(CarCamEventTopologyProducer.PER_PLATE_STORE);
     }
 
     @Override
@@ -31,20 +31,20 @@ Logger log = Logger.getLogger(CarCamEventProcessor.class);
 
         CarCamEventAggregation carCamEventAggregation = perPlateStore.get(plateUtf8);
 
-        if(carCamEventAggregation == null){
+        if (carCamEventAggregation == null) {
             carCamEventAggregation = CarCamEventAggregationBuilder.CarCamEventAggregation(List.of(record.value()));
-            perPlateStore.put(plateUtf8,carCamEventAggregation);
+            perPlateStore.put(plateUtf8, carCamEventAggregation);
         } else {
             carCamEventAggregation.events().add(record.value());
             var newAgg = CarCamEventAggregationBuilder.from(carCamEventAggregation).withEvents(carCamEventAggregation.events());
-            perPlateStore.put(plateUtf8,newAgg);
+            perPlateStore.put(plateUtf8, newAgg);
             log.warn("aggregation size " + newAgg.events().size());
         }
 
-       if(carCamEventAggregation.events().size() > 2){
-           Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
-           ctx.forward(rec);
-       }
+        if (carCamEventAggregation.events().size() > 2) {
+            Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
+            ctx.forward(rec);
+        }
 
     }
 

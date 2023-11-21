@@ -14,7 +14,7 @@ import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 
-public class CarCamEventTopologyBuilder {
+public class CarCamEventTopologyProducer {
 
     public static final Serde<CarCameraEvent> carCameraEventSerde = new ObjectMapperSerde<>(CarCameraEvent.class);
     public static final Serde<CarStateChanged> carStateChangedSerde = new ObjectMapperSerde<>(CarStateChanged.class);

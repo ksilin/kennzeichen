@@ -11,14 +11,14 @@ import java.time.Instant;
 import java.util.Properties;
 
 @QuarkusTest
-class InitialTopologyTest {
+class CarCamEventTopologyTest {
 
 static String inputTopicName = "carCameraEvents";
 static String outputTopicName = "carEventNotifications";
 
     static final Properties props = new Properties();
 
-    Logger log = Logger.getLogger(InitialTopologyTest.class);
+    Logger log = Logger.getLogger(CarCamEventTopologyTest.class);
 
     @BeforeAll
     static void beforeAll(){
@@ -30,15 +30,15 @@ static String outputTopicName = "carEventNotifications";
     @Test
     void test() {
 
-       Topology topology = CarCamEventTopologyBuilder.createTopoology(inputTopicName, outputTopicName);
+       Topology topology = CarCamEventTopologyProducer.createTopoology(inputTopicName, outputTopicName);
 
         System.out.println(topology.describe().toString());
 
         var testDriver = new TopologyTestDriver(topology, props);
 
-        TestInputTopic<String, CarCameraEvent> inputTopic = testDriver.createInputTopic(inputTopicName, CarCamEventTopologyBuilder.stringSerde.serializer(), CarCamEventTopologyBuilder.carCameraEventSerde.serializer());
+        TestInputTopic<String, CarCameraEvent> inputTopic = testDriver.createInputTopic(inputTopicName, CarCamEventTopologyProducer.stringSerde.serializer(), CarCamEventTopologyProducer.carCameraEventSerde.serializer());
 
-        TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, CarCamEventTopologyBuilder.stringSerde.deserializer(), CarCamEventTopologyBuilder.carStateChangedSerde.deserializer());
+        TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, CarCamEventTopologyProducer.stringSerde.deserializer(), CarCamEventTopologyProducer.carStateChangedSerde.deserializer());
 
         long now = Instant.EPOCH.toEpochMilli();
 
