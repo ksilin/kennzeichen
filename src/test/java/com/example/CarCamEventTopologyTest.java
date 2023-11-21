@@ -39,20 +39,27 @@ static String outputTopicName = "carEventNotifications";
         long now = Instant.EPOCH.toEpochMilli();
 
         String carID = "123";
-        String plate = "SDFPKSDSE";
+        String plate = "ABCDEF";
         var event = CarCameraEventBuilder.CarCameraEvent(carID, "new", plate, "DEU", now, "front", "FFF", 0.6f, "out");
 
 
+        // original plate
         inputTopic.pipeInput("hi",event, now);
 
+        // update to original plate, same value
         inputTopic.pipeInput("hi",event.withCarState("update"), now + 1000);
 
-
+        // update same value, new carID
         String carID2 = "234";
-
         inputTopic.pipeInput("hi",event.withCarID(carID2).withCarState("update"), now + 2000);
-        String plate2 = "SDJFSJS";
-        inputTopic.pipeInput("hi",event.withPlateUTF8(plate2).withCarState("update"), now + 3000);
+
+        // update totally different value
+        String plateDifferent = "SDJFSJS";
+        inputTopic.pipeInput("hi",event.withPlateUTF8(plateDifferent).withCarState("update"), now + 3000);
+
+        // update similar value
+        String plateSimlar = "ABCDEG";
+        inputTopic.pipeInput("hi",event.withPlateUTF8(plateSimlar).withCarState("update"), now + 4000);
 
 
         var kvs = outputTopic.readKeyValuesToList();

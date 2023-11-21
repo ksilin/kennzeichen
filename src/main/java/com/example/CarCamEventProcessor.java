@@ -50,22 +50,31 @@ public class CarCamEventProcessor implements Processor<String, CarCameraEvent, S
             log.warn("per plate aggregation size " + perPlateAggregation.events().size());
         } else if(carState.equals("update")) {
 
+            log.infof("update for %s, aggregation found: %b ", plateUtf8, perPlateAggregation != null);
 
             JaroWinkler jw = new JaroWinkler();
 
-            AtomicReference<CarCamEventAggregation> bestMatch = new AtomicReference<>();
-            AtomicReference<Double> bestSimilarity = new AtomicReference<>(0.0);
+            if(perPlateAggregation == null) {
 
-            perPlateStore.all().forEachRemaining( entry -> {
+                AtomicReference<CarCamEventAggregation> bestMatch = new AtomicReference<>();
+                AtomicReference<Double> bestSimilarity = new AtomicReference<>(0.0);
 
-                     double sim = jw.similarity(plateUtf8, entry.key);
-                     if(sim > bestSimilarity.get()){
-                         bestSimilarity.set(sim);
-                         bestMatch.set(entry.value);
-                     }
-                    }
-            );
-            log.infof("similarity between %s and %s %s", plateUtf8, bestMatch.get().events().get(0).plateUTF8(), bestSimilarity.get().toString());
+                perPlateStore.all().forEachRemaining(entry -> {
+
+                            double sim = jw.similarity(plateUtf8, entry.key);
+                            if (sim > bestSimilarity.get()) {
+                                bestSimilarity.set(sim);
+                                bestMatch.set(entry.value);
+                            }
+                        }
+                );
+                log.infof("similarity between %s and %s %s", plateUtf8, bestMatch.get().events().get(0).plateUTF8(), bestSimilarity.get().toString());
+            } else {
+                log.infof("plate %s updated, and aggregation exists: ", plateUtf8, perPlateAggregation.events().stream().map(CarCameraEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
+                log.infof("aggregation carIds: %s", perPlateAggregation.events().stream().map(CarCameraEvent::carID).collect(Collectors.toUnmodifiableSet()).toString());
+                perPlateAggregation.events().add(record.value());
+                perPlateAggregation = CarCamEventAggregationBuilder.from(perPlateAggregation).withEvents(perPlateAggregation.events());
+            }
 
         } else if(carState.equals("lost")){
             log.warnf("lost car state for plate %s", plateUtf8);
@@ -73,11 +82,7 @@ public class CarCamEventProcessor implements Processor<String, CarCameraEvent, S
             log.errorf("unknown car state %s for plate ", carState, record.value().plateUTF8());
         }
 
-
-
-
-
-        if (perPlateAggregation.events().size() > 2) {
+        if (perPlateAggregation != null && perPlateAggregation.events().size() > 2) {
             Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
             ctx.forward(rec);
         }
