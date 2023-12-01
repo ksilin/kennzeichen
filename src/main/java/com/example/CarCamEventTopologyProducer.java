@@ -19,13 +19,15 @@ public class CarCamEventTopologyProducer {
     public static final Serde<CarStateChanged> carStateChangedSerde = new ObjectMapperSerde<>(CarStateChanged.class);
     public static final Serde<CarCamEventAggregation> carCamEventAggregationSerde = new ObjectMapperSerde<>(CarCamEventAggregation.class);
 
+    public static Serde<CarStateChanged> CarStateChangedSerde = new ObjectMapperSerde<>(CarStateChanged.class);
+
     public static final Serde<String> stringSerde = Serdes.String();
 
     public static final String PER_PLATE_STORE = "per_plate_store";
+
     static public Topology createTopoology(String inputTopicName, String outputTopicName){
 
-        KeyValueBytesStoreSupplier perPlateStoreSupplier = Stores.persistentKeyValueStore(PER_PLATE_STORE);
-        StoreBuilder<KeyValueStore<String, CarCamEventAggregation>> perPlateStoreBuilder = Stores.keyValueStoreBuilder(perPlateStoreSupplier, stringSerde, carCamEventAggregationSerde);
+        StoreBuilder<KeyValueStore<String, CarCamEventAggregation>> perPlateStoreBuilder = makePerPlateStore();
 
         var builder = new StreamsBuilder();
         builder.addStateStore(perPlateStoreBuilder);
@@ -42,19 +44,25 @@ public class CarCamEventTopologyProducer {
         BranchedKStream<String, CarCamEvent> lowConfidenceBranch = splitProcessor
                 .branch((k, v) -> v.plateConfidence() < 0.6f, Branched.withConsumer( (lowConfidenceStream -> lowConfidenceStream.to("lowconfidenceTopic"))));
         String defaultBranchName = "defaultBranch";
-        Map<String, KStream<String, CarCamEvent>> highConfidenceBranch = lowConfidenceBranch.defaultBranch(Branched.as(defaultBranchName));
+        Map<String, KStream<String, CarCamEvent>> branchMap = lowConfidenceBranch.defaultBranch(Branched.as(defaultBranchName));
 
 
-        KStream<String, CarCamEvent> defaultBranch = highConfidenceBranch.get(splitName + defaultBranchName);
+        KStream<String, CarCamEvent> highConfidenceBranch = branchMap.get(splitName + defaultBranchName);
 
-        KStream<String, CarStateChanged> processed = defaultBranch.process(CarCamEventProcessor::new, PER_PLATE_STORE);
+        KStream<String, CarStateChanged> processed = highConfidenceBranch.process(CarCamEventProcessor::new, PER_PLATE_STORE);
 
-        defaultBranch.process(() -> new CarStatusChangedPunctuateProcessor(1000L), PER_PLATE_STORE);
+        highConfidenceBranch.process(() -> new CarStatusChangedPunctuateProcessor(1000L), PER_PLATE_STORE);
 
         processed.to(outputTopicName, Produced.with(stringSerde, carStateChangedSerde));
         Topology topology = builder.build();
 
         return topology;
+    }
+
+    public static StoreBuilder<KeyValueStore<String, CarCamEventAggregation>> makePerPlateStore() {
+        KeyValueBytesStoreSupplier perPlateStoreSupplier = Stores.persistentKeyValueStore(PER_PLATE_STORE);
+        StoreBuilder<KeyValueStore<String, CarCamEventAggregation>> perPlateStoreBuilder = Stores.keyValueStoreBuilder(perPlateStoreSupplier, stringSerde, carCamEventAggregationSerde);
+        return perPlateStoreBuilder;
     }
 
 

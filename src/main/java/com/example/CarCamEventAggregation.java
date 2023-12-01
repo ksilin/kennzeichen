@@ -14,6 +14,10 @@ public record CarCamEventAggregation(List<CarCamEvent> events) implements CarCam
         return new CarCamEventAggregation(List.of());
     }
 
+    public static CarCamEventAggregation from(List<CarCamEvent> events) {
+        return new CarCamEventAggregation(events);
+    }
+
     // TODO - interesting - if this method is an instance method, Jackson mapper fails.
     public static Set<String> getAllPlates(CarCamEventAggregation agg) {
         Set<String> allPlates = agg.events.stream().map(CarCamEvent::plateUTF8).collect(Collectors.toUnmodifiableSet());

@@ -38,9 +38,10 @@ public class CarStatusChangedPunctuateProcessor implements Processor<String, Car
 
                  if(eventTimedOut){
                      log.warnv("event chain timed out. Status change event will be dispatched: {0}", aggKV);
+                     Record<String, CarStateChanged> rec = new Record<>(aggKV.key, CarStateChangedBuilder.CarStateChanged(aggKV.key, "ENTERED"), timestamp);
+                     ctx.forward(rec);
+                     perPlateStore.delete(aggKV.key);
                  }
-                 //ctx.forward();
-                 // perPlateStore.delete(aggKV.key);
              });
             }
         };
@@ -49,7 +50,7 @@ public class CarStatusChangedPunctuateProcessor implements Processor<String, Car
 
     @Override
     public void process(Record<String, CarCamEvent> record) {
-        log.infov("punctuator process. ignoring record: {0}", record);
+        log.debugv("punctuator process. ignoring record: {0}", record);
     }
 
     @Override

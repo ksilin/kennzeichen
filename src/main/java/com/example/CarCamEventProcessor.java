@@ -69,7 +69,10 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
                             }
                     );
                 }
-                log.infof("similarity between %s and %s %s", plateUtf8, bestMatch.get().events().get(0).plateUTF8(), bestSimilarity.get().toString());
+                //
+                if(bestMatch.get() != null && !bestMatch.get().events().isEmpty()) {
+                    log.infof("similarity between %s and %s %s", plateUtf8, bestMatch.get().events().get(0).plateUTF8(), bestSimilarity.get().toString());
+                }
             } else {
                 log.infof("plate %s updated, and aggregation exists: ", plateUtf8, perPlateAggregation.events().stream().map(CarCamEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
                 log.infof("aggregation carIds: %s", perPlateAggregation.events().stream().map(CarCamEvent::carID).collect(Collectors.toUnmodifiableSet()).toString());
