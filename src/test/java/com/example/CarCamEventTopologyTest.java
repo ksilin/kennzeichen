@@ -44,7 +44,7 @@ class CarCamEventTopologyTest {
         String carID = "123";
         String plate = "ABCDEF";
         long now = Instant.EPOCH.toEpochMilli();
-        var event = CarCameraEventBuilder.CarCameraEvent(carID, "new", plate, "DEU", now, "front", "FFF", 0.6f, "out");
+        var event = CarCamEventBuilder.CarCamEvent(carID, "new", plate, "DEU", now, "front", "FFF", 0.6f, "out");
 
         inputTopic.pipeInput("hi", event, now);
 
@@ -76,7 +76,7 @@ class CarCamEventTopologyTest {
 
         String carID = "123";
         String plate = "ABCDEF";
-        var event = CarCameraEventBuilder.CarCameraEvent(carID, "new", plate, "DEU", now, "front", "FFF", 0.6f, "out");
+        var event = CarCamEventBuilder.CarCamEvent(carID, "new", plate, "DEU", now, "front", "FFF", 0.6f, "out");
 
 
         // original plate
@@ -120,7 +120,7 @@ class CarCamEventTopologyTest {
 
         long now = Instant.EPOCH.toEpochMilli();
 
-        var event = CarCameraEventBuilder.CarCameraEvent("123", "update", "SDFPKSDSE", "DEU", now, "front", "FFF", 0.6f, "out");
+        var event = CarCamEventBuilder.CarCamEvent("123", "update", "SDFPKSDSE", "DEU", now, "front", "FFF", 0.6f, "out");
 
         inputTopic.pipeInput("hi", event, now);
         inputTopic.pipeInput("hi", event, now + 1000);
