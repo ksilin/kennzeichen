@@ -12,12 +12,14 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-public class CarCamEventProcessor implements Processor<String, CarCameraEvent, String, CarStateChanged> {
+public class CarCamEventProcessor implements Processor<String, CarCamEvent, String, CarStateChanged> {
 
     Logger log = Logger.getLogger(CarCamEventProcessor.class);
 
     private ProcessorContext<String, CarStateChanged> ctx;
     private KeyValueStore<String, CarCamEventAggregation> perPlateStore;
+
+    private final JaroWinkler jw = new JaroWinkler();
 
     @Override
     public void init(ProcessorContext<String, CarStateChanged> context) {
@@ -27,7 +29,7 @@ public class CarCamEventProcessor implements Processor<String, CarCameraEvent, S
     }
 
     @Override
-    public void process(Record<String, CarCameraEvent> record) {
+    public void process(Record<String, CarCamEvent> record) {
 
         log.warn("processing event " + record.value().toString());
 
@@ -42,7 +44,7 @@ public class CarCamEventProcessor implements Processor<String, CarCameraEvent, S
                 log.infof("plate %s new", plateUtf8);
                 perPlateAggregation = CarCamEventAggregationBuilder.CarCamEventAggregation(List.of(record.value()));
             } else {
-                log.infof("plate %s new, but aggregation exists: ", plateUtf8, perPlateAggregation.events().stream().map(CarCameraEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
+                log.infof("plate %s new, but aggregation exists: ", plateUtf8, perPlateAggregation.events().stream().map(CarCamEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
                 perPlateAggregation.events().add(record.value());
                 perPlateAggregation = CarCamEventAggregationBuilder.from(perPlateAggregation).withEvents(perPlateAggregation.events());
             }
@@ -52,26 +54,25 @@ public class CarCamEventProcessor implements Processor<String, CarCameraEvent, S
 
             log.infof("update for %s, aggregation found: %b ", plateUtf8, perPlateAggregation != null);
 
-            JaroWinkler jw = new JaroWinkler();
-
             if(perPlateAggregation == null) {
 
                 AtomicReference<CarCamEventAggregation> bestMatch = new AtomicReference<>();
                 AtomicReference<Double> bestSimilarity = new AtomicReference<>(0.0);
 
-                perPlateStore.all().forEachRemaining(entry -> {
-
-                            double sim = jw.similarity(plateUtf8, entry.key);
-                            if (sim > bestSimilarity.get()) {
-                                bestSimilarity.set(sim);
-                                bestMatch.set(entry.value);
+                try(var it = perPlateStore.all()) {
+                    it.forEachRemaining(entry -> {
+                                double sim = jw.similarity(plateUtf8, entry.key);
+                                if (sim > bestSimilarity.get()) {
+                                    bestSimilarity.set(sim);
+                                    bestMatch.set(entry.value);
+                                }
                             }
-                        }
-                );
+                    );
+                }
                 log.infof("similarity between %s and %s %s", plateUtf8, bestMatch.get().events().get(0).plateUTF8(), bestSimilarity.get().toString());
             } else {
-                log.infof("plate %s updated, and aggregation exists: ", plateUtf8, perPlateAggregation.events().stream().map(CarCameraEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
-                log.infof("aggregation carIds: %s", perPlateAggregation.events().stream().map(CarCameraEvent::carID).collect(Collectors.toUnmodifiableSet()).toString());
+                log.infof("plate %s updated, and aggregation exists: ", plateUtf8, perPlateAggregation.events().stream().map(CarCamEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
+                log.infof("aggregation carIds: %s", perPlateAggregation.events().stream().map(CarCamEvent::carID).collect(Collectors.toUnmodifiableSet()).toString());
                 perPlateAggregation.events().add(record.value());
                 perPlateAggregation = CarCamEventAggregationBuilder.from(perPlateAggregation).withEvents(perPlateAggregation.events());
             }
@@ -86,7 +87,6 @@ public class CarCamEventProcessor implements Processor<String, CarCameraEvent, S
             Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
             ctx.forward(rec);
         }
-
     }
 
     @Override

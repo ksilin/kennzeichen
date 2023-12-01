@@ -15,7 +15,7 @@ import java.util.Map;
 
 public class CarCamEventTopologyProducer {
 
-    public static final Serde<CarCameraEvent> carCameraEventSerde = new ObjectMapperSerde<>(CarCameraEvent.class);
+    public static final Serde<CarCamEvent> carCameraEventSerde = new ObjectMapperSerde<>(CarCamEvent.class);
     public static final Serde<CarStateChanged> carStateChangedSerde = new ObjectMapperSerde<>(CarStateChanged.class);
     public static final Serde<CarCamEventAggregation> carCamEventAggregationSerde = new ObjectMapperSerde<>(CarCamEventAggregation.class);
 
@@ -31,22 +31,22 @@ public class CarCamEventTopologyProducer {
         var builder = new StreamsBuilder();
         builder.addStateStore(perPlateStoreBuilder);
 
-        KStream<String, CarCameraEvent> stream = builder.stream(inputTopicName, Consumed.with(stringSerde, carCameraEventSerde));
+        KStream<String, CarCamEvent> stream = builder.stream(inputTopicName, Consumed.with(stringSerde, carCameraEventSerde));
 
-        KStream<String, CarCameraEvent> stringCarCameraEventKStream = stream.selectKey((k, v) -> v.sensorNdl());
-        KStream<String, CarCameraEvent> repartitioned = stringCarCameraEventKStream.repartition(Repartitioned.with(stringSerde, carCameraEventSerde));// add Repartitioned if required
+        KStream<String, CarCamEvent> stringCarCameraEventKStream = stream.selectKey((k, v) -> v.sensorNdl());
+        KStream<String, CarCamEvent> repartitioned = stringCarCameraEventKStream.repartition(Repartitioned.with(stringSerde, carCameraEventSerde));// add Repartitioned if required
         var peeked = repartitioned.peek((k, v) -> System.out.println("key: " + k + " value: " + v));
 
         String splitName = "splitProcessor-";
-        BranchedKStream<String, CarCameraEvent> splitProcessor = peeked.split(Named.as(splitName));
+        BranchedKStream<String, CarCamEvent> splitProcessor = peeked.split(Named.as(splitName));
         String lowConfidenceBranchName = "lowConfidenceBranch";
-        BranchedKStream<String, CarCameraEvent> lowConfidenceBranch = splitProcessor
+        BranchedKStream<String, CarCamEvent> lowConfidenceBranch = splitProcessor
                 .branch((k, v) -> v.plateConfidence() < 0.6f, Branched.withConsumer( (lowConfidenceStream -> lowConfidenceStream.to("lowconfidenceTopic"))));
         String defaultBranchName = "defaultBranch";
-        Map<String, KStream<String, CarCameraEvent>> highConfidenceBranch = lowConfidenceBranch.defaultBranch(Branched.as(defaultBranchName));
+        Map<String, KStream<String, CarCamEvent>> highConfidenceBranch = lowConfidenceBranch.defaultBranch(Branched.as(defaultBranchName));
 
 
-        KStream<String, CarCameraEvent> defaultBranch = highConfidenceBranch.get(splitName + defaultBranchName);
+        KStream<String, CarCamEvent> defaultBranch = highConfidenceBranch.get(splitName + defaultBranchName);
 
         KStream<String, CarStateChanged> processed = defaultBranch.process(CarCamEventProcessor::new, PER_PLATE_STORE);
 
