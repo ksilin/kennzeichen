@@ -25,7 +25,6 @@ public class CarCamEventTopologyProducer {
     static public Topology createTopoology(String inputTopicName, String outputTopicName){
 
         KeyValueBytesStoreSupplier perPlateStoreSupplier = Stores.persistentKeyValueStore(PER_PLATE_STORE);
-
         StoreBuilder<KeyValueStore<String, CarCamEventAggregation>> perPlateStoreBuilder = Stores.keyValueStoreBuilder(perPlateStoreSupplier, stringSerde, carCamEventAggregationSerde);
 
         var builder = new StreamsBuilder();
@@ -49,6 +48,8 @@ public class CarCamEventTopologyProducer {
         KStream<String, CarCamEvent> defaultBranch = highConfidenceBranch.get(splitName + defaultBranchName);
 
         KStream<String, CarStateChanged> processed = defaultBranch.process(CarCamEventProcessor::new, PER_PLATE_STORE);
+
+        defaultBranch.process(() -> new CarStatusChangedPunctuateProcessor(1000L), PER_PLATE_STORE);
 
         processed.to(outputTopicName, Produced.with(stringSerde, carStateChangedSerde));
         Topology topology = builder.build();
