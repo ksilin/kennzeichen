@@ -1,5 +1,6 @@
-package com.example;
+package com.example.model;
 
+import com.example.model.CarStateChangedBuilder;
 import io.soabase.recordbuilder.core.RecordBuilder;
 
 @RecordBuilder

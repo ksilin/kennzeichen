@@ -1,5 +1,8 @@
 package com.example;
 
+import com.example.model.CarCamEvent;
+import com.example.model.CarCamEventAggregation;
+import com.example.model.CarStateChanged;
 import io.quarkus.kafka.client.serialization.ObjectMapperSerde;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;

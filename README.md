@@ -4,6 +4,31 @@ This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
 
+## use cases
+
+```
+❯ cat db_min.jsonl | jq "{ts: .captureTimestamp, plate: .plateUTF8, id: .sensorProviderID, dir: .carMoveDirection, state: .carState, car: .carID}" -c | sort -n G "XX YY"
+```
+
+```json
+{"ts":1694532901149,"plate":"XX YY3803","id":"ausfahrt_heck","dir":"unknown","state":"new","car":"127245"}
+{"ts":1694532901189,"plate":"XX YY3803","id":"ausfahrt_heck","dir":"in","state":"update","car":"127245"}
+{"ts":1694532902149,"plate":"XX YY3803","id":"ausfahrt_heck","dir":"in","state":"update","car":"127245"}
+{"ts":1694532906403,"plate":"XX YY3803","id":"einfahrt_front","dir":"in","state":"update","car":"95443"}
+{"ts":1694532906603,"plate":"XX YY3803","id":"einfahrt_front","dir":"in","state":"update","car":"95443"}
+{"ts":1694532917647,"plate":"XX YY3803","id":"einfahrt_heck","dir":"unknown","state":"new","car":"111650"}
+{"ts":1694532917727,"plate":"XX YY3803","id":"einfahrt_heck","dir":"out","state":"update","car":"111650"}
+{"ts":1694534125892,"plate":"XX YY3","id":"ausfahrt_front","dir":"unknown","state":"new","car":"100347"}
+{"ts":1694534125972,"plate":"XX YY38","id":"ausfahrt_front","dir":"in","state":"update","car":"100347"}
+{"ts":1694534126132,"plate":"XX YY380","id":"ausfahrt_front","dir":"in","state":"update","car":"100347"}
+{"ts":1694534126212,"plate":"XX YY3800","id":"ausfahrt_front","dir":"in","state":"update","car":"100347"}
+{"ts":1694534126412,"plate":"XX YY3803","id":"ausfahrt_front","dir":"in","state":"update","car":"100347"}
+{"ts":1694534129012,"plate":"XX YY3800","id":"ausfahrt_front","dir":"in","state":"update","car":"100347"}
+{"ts":1694534139510,"plate":"XX YY3803","id":"ausfahrt_heck","dir":"unknown","state":"new","car":"127265"}
+{"ts":1694534140150,"plate":"XX YY3803","id":"ausfahrt_heck","dir":"out","state":"update","car":"127265"}
+```
+
+
 ## preprocessing steps
 
 `cat database-dump.csv | tail -n+2 | cut -d ',' -f 2- | perl -pe 's/""/"/g' | cut -c 2- | rev | cut -c 3- | rev | jq '.[] | select(.fieldname | contains("event"))' -c > db_clean.jsonl`

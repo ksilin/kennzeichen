@@ -1,5 +1,8 @@
 package com.example;
 
+import com.example.model.CarCamEvent;
+import com.example.model.CarCamEventBuilder;
+import com.example.model.CarStateChanged;
 import io.quarkus.test.junit.QuarkusTest;
 
 import org.apache.kafka.streams.*;

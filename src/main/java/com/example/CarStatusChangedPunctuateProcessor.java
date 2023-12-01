@@ -1,5 +1,9 @@
 package com.example;
 
+import com.example.model.CarCamEvent;
+import com.example.model.CarCamEventAggregation;
+import com.example.model.CarStateChanged;
+import com.example.model.CarStateChangedBuilder;
 import org.apache.kafka.streams.processor.PunctuationType;
 import org.apache.kafka.streams.processor.Punctuator;
 import org.apache.kafka.streams.processor.api.Processor;
