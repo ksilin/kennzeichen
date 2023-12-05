@@ -4,6 +4,8 @@ import com.example.model.CarCamEvent;
 import com.example.model.CarCamEventAggregation;
 import com.example.model.CarStateChanged;
 import io.quarkus.kafka.client.serialization.ObjectMapperSerde;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -13,9 +15,11 @@ import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.Map;
 
+@ApplicationScoped
 public class CarCamEventTopologyProducer {
 
     public static final Serde<CarCamEvent> carCameraEventSerde = new ObjectMapperSerde<>(CarCamEvent.class);
@@ -27,6 +31,12 @@ public class CarCamEventTopologyProducer {
     public static final Serde<String> stringSerde = Serdes.String();
 
     public static final String PER_PLATE_STORE = "per_plate_store";
+
+
+    @Produces
+    public Topology makeTopology(@ConfigProperty(name="kennzeichen.source-topic", defaultValue = "carCamEventsSource") String sourceTopic, @ConfigProperty(name="kennzeichen.target-topic", defaultValue = "carStatusChanged") String targetTopic){
+        return createTopoology(sourceTopic, targetTopic);
+    }
 
     static public Topology createTopoology(String inputTopicName, String outputTopicName){
 

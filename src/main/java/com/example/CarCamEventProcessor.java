@@ -87,10 +87,11 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
             log.errorf("unknown car state %s for plate ", carState, record.value().plateUTF8());
         }
 
-        if (perPlateAggregation != null && perPlateAggregation.events().size() > 2) {
-            Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
-            ctx.forward(rec);
-        }
+        // TODO - CarStateChanged produced later downstream
+//        if (perPlateAggregation != null && perPlateAggregation.events().size() > 2) {
+//            Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
+//            ctx.forward(rec);
+//        }
     }
 
     @Override

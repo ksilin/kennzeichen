@@ -68,7 +68,7 @@ class CarStatusChangedPunctuateTest {
 
         String state = "UNKNOWN";
         if(!directions.isEmpty()){
-            state = directions.get(0).equals("in")? "EINFAHRT" : "AUSFAHRT";
+            state = directions.getFirst().equals("in")? "EINFAHRT" : "AUSFAHRT";
         }
 
         // TODO - count by group
@@ -105,7 +105,7 @@ class CarStatusChangedPunctuateTest {
         var kvs = outputTopic.readKeyValuesToList();
 
         assertThat(kvs.size()).isEqualTo(1);
-        assertThat(kvs.get(0).key).isEqualTo(plateCompleteSession);
+        assertThat(kvs.getFirst().key).isEqualTo(plateCompleteSession);
         assertThat(perPlateStore.get(plateCompleteSession)).isNull();
         assertThat(perPlateStore.get(plateOngoingSession).events().get(0).plateUTF8()).isEqualTo(plateOngoingSession);
 
