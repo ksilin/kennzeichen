@@ -82,9 +82,9 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
             }
 
         } else if(carState.equals("lost")){
-            log.warnf("lost car state for plate %s", plateUtf8);
+            log.warnv("lost car state for plate {0}", plateUtf8);
         } else {
-            log.errorf("unknown car state %s for plate ", carState, record.value().plateUTF8());
+            log.errorv("unknown car state {0} for plate ", carState, record.value().plateUTF8());
         }
 
         // TODO - CarStateChanged produced later downstream

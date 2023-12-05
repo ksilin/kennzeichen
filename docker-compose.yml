@@ -1,0 +1,41 @@
+version: "3.5"
+services:
+  kafka:
+    image: confluentinc/confluent-local:7.5.2
+    hostname: kafka
+    container_name: kafka-kennzeichen
+    restart: always
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: BROKER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENERS: BROKER://:9092,PLAINTEXT_HOST://:29092, CONTROLLER://:29093
+      KAFKA_ADVERTISED_LISTENERS: BROKER://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
+
+  kafka-init:
+    image: confluentinc/cp-enterprise-kafka:7.5.2
+    hostname: kafka-init
+    container_name: kafka-init
+    depends_on:
+      - kafka
+    command: >
+      bash -c "echo Waiting for Kafka to be ready... &&
+             cub kafka-ready -b kafka:9092 1 20 &&
+             echo Creating topics... &&
+             kafka-topics --create --topic carCamEventsTopic --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 &&
+             kafka-topics --create --topic carStateChangedTopic --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1"
+
+  kennzeichen:
+    image: example/kennzeichen
+    restart: always
+    depends_on:
+      - kafka
+    hostname: kennzeichen
+    container_name: kennzeichen
+    build:
+      dockerfile: src/main/docker/Dockerfile.${QUARKUS_MODE:-jvm}
+    ports:
+      - "8080:8080"

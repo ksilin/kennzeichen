@@ -14,4 +14,18 @@ public record CarCamEvent(String carID,
                           Float plateConfidence,
                           String carMoveDirection) implements CarCamEventBuilder.With {
 
+    public static CarCamEvent fromRawEvent(Root rawEvent){
+        return new CarCamEvent(        rawEvent.buffer().carID(),
+                rawEvent.buffer().carState(),
+                rawEvent.buffer().plateUTF8(),
+                rawEvent.buffer().plateCountry(),
+                Long.parseLong(rawEvent.buffer().capture_ts()),
+                rawEvent.buffer().sensorProviderID(),
+                "",
+                Float.parseFloat(rawEvent.buffer().plateConfidence()),
+                rawEvent.buffer().carMoveDirection()
+        );
+    }
+
+
 }

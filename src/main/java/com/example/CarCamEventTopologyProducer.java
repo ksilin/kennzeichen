@@ -3,6 +3,7 @@ package com.example;
 import com.example.model.CarCamEvent;
 import com.example.model.CarCamEventAggregation;
 import com.example.model.CarStateChanged;
+import com.example.model.Root;
 import io.quarkus.kafka.client.serialization.ObjectMapperSerde;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
@@ -16,15 +17,19 @@ import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 import java.util.Map;
 
 @ApplicationScoped
 public class CarCamEventTopologyProducer {
 
+    static Logger log = Logger.getLogger(CarCamEventTopologyProducer.class);
+
     public static final Serde<CarCamEvent> carCameraEventSerde = new ObjectMapperSerde<>(CarCamEvent.class);
     public static final Serde<CarStateChanged> carStateChangedSerde = new ObjectMapperSerde<>(CarStateChanged.class);
     public static final Serde<CarCamEventAggregation> carCamEventAggregationSerde = new ObjectMapperSerde<>(CarCamEventAggregation.class);
+    public static final Serde<Root> rawEventSerde = new ObjectMapperSerde<>(Root.class);
 
     public static Serde<CarStateChanged> CarStateChangedSerde = new ObjectMapperSerde<>(CarStateChanged.class);
 
@@ -45,7 +50,12 @@ public class CarCamEventTopologyProducer {
         var builder = new StreamsBuilder();
         builder.addStateStore(perPlateStoreBuilder);
 
-        KStream<String, CarCamEvent> stream = builder.stream(inputTopicName, Consumed.with(stringSerde, carCameraEventSerde));
+        KStream<String, Root> streamRaw = builder.stream(inputTopicName, Consumed.with(stringSerde, rawEventSerde));
+
+        KStream<String, CarCamEvent> stream = streamRaw.mapValues(e -> {
+            log.infov("converting event from raw to minimal: {0}", e);
+            return CarCamEvent.fromRawEvent(e);
+        });
 
         KStream<String, CarCamEvent> stringCarCameraEventKStream = stream.selectKey((k, v) -> v.sensorNdl());
         KStream<String, CarCamEvent> repartitioned = stringCarCameraEventKStream.repartition(Repartitioned.with(stringSerde, carCameraEventSerde));// add Repartitioned if required

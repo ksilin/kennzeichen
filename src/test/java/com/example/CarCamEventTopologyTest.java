@@ -1,14 +1,14 @@
 package com.example;
 
-import com.example.model.CarCamEvent;
-import com.example.model.CarCamEventBuilder;
-import com.example.model.CarStateChanged;
+import com.example.model.*;
 import io.quarkus.test.junit.QuarkusTest;
 
 import org.apache.kafka.streams.*;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import uk.co.jemos.podam.api.PodamFactory;
+import uk.co.jemos.podam.api.PodamFactoryImpl;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -117,18 +117,20 @@ class CarCamEventTopologyTest {
 
         var testDriver = new TopologyTestDriver(topology, props);
 
-        TestInputTopic<String, CarCamEvent> inputTopic = testDriver.createInputTopic(inputTopicName, CarCamEventTopologyProducer.stringSerde.serializer(), CarCamEventTopologyProducer.carCameraEventSerde.serializer());
+        TestInputTopic<String, Root> inputTopic = testDriver.createInputTopic(inputTopicName, CarCamEventTopologyProducer.stringSerde.serializer(), CarCamEventTopologyProducer.rawEventSerde.serializer());
 
         TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, CarCamEventTopologyProducer.stringSerde.deserializer(), CarCamEventTopologyProducer.carStateChangedSerde.deserializer());
 
         long now = Instant.EPOCH.toEpochMilli();
 
-        var event = CarCamEventBuilder.CarCamEvent("123", "update", "SDFPKSDSE", "DEU", now, "front", "FFF", 0.6f, "out");
+        PodamFactory eventFactory = new PodamFactoryImpl();
+        var root = eventFactory.manufacturePojoWithFullData(Root.class);
 
-        inputTopic.pipeInput("hi", event, now);
-        inputTopic.pipeInput("hi", event, now + 1000);
-        inputTopic.pipeInput("hi", event, now + 2000);
-        inputTopic.pipeInput("hi", event, now + 3000);
+        Buffer buffer = root.buffer();
+
+        Root validRoot = root.withBuffer(buffer.withCarID("1234").withCapture_ts("1232345").withCapture_timestamp("230482034823").withPlateConfidence("0.6").withCarState("new"));
+
+        inputTopic.pipeInput("hi", validRoot, now);
 
         var kvs = outputTopic.readKeyValuesToList();
         kvs.forEach(k -> log.info(k.toString()));
