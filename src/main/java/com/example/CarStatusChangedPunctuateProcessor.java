@@ -14,6 +14,8 @@ import org.jboss.logging.Logger;
 
 import java.time.Duration;
 
+import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE;
+
 public class CarStatusChangedPunctuateProcessor implements Processor<String, CarCamEvent, String, CarStateChanged> {
 
     Logger log = Logger.getLogger(CarStatusChangedPunctuateProcessor.class);
@@ -31,22 +33,22 @@ public class CarStatusChangedPunctuateProcessor implements Processor<String, Car
     public void init(ProcessorContext<String, CarStateChanged> context) {
         Processor.super.init(context);
         ctx = context;
-        perPlateStore = context.getStateStore(CarCamEventTopologyProducer.PER_PLATE_STORE);
+        perPlateStore = context.getStateStore(PER_PLATE_STORE);
 
         Punctuator punctuator = timestamp -> {
             log.info("Running punctuator at " + timestamp);
 
-            try(var it = perPlateStore.all()){
-             it.forEachRemaining(aggKV -> {
-                 var eventTimedOut = timestamp - aggKV.value.lastEventTimestamp() > eventTimeoutThreshold;
+            try (var it = perPlateStore.all()) {
+                it.forEachRemaining(aggKV -> {
+                    var eventTimedOut = timestamp - aggKV.value.lastEventTimestamp() > eventTimeoutThreshold;
 
-                 if(eventTimedOut){
-                     log.warnv("event chain timed out. Status change event will be dispatched: {0}", aggKV);
-                     Record<String, CarStateChanged> rec = new Record<>(aggKV.key, CarStateChangedBuilder.CarStateChanged(aggKV.key, "ENTERED"), timestamp);
-                     ctx.forward(rec);
-                     perPlateStore.delete(aggKV.key);
-                 }
-             });
+                    if (eventTimedOut) {
+                        log.warnv("event chain timed out. Status change event will be dispatched: {0}", aggKV);
+                        Record<String, CarStateChanged> rec = new Record<>(aggKV.key, CarStateChangedBuilder.CarStateChanged(aggKV.key, "ENTERED"), timestamp);
+                        ctx.forward(rec);
+                        perPlateStore.delete(aggKV.key);
+                    }
+                });
             }
         };
         ctx.schedule(Duration.ofSeconds(3), PunctuationType.WALL_CLOCK_TIME, punctuator);

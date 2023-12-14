@@ -1,6 +1,5 @@
 package com.example.model;
 
-import com.example.model.CarCamEventAggregationBuilder;
 import io.soabase.recordbuilder.core.RecordBuilder;
 
 import java.util.Comparator;

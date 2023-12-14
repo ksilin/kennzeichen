@@ -1,6 +1,5 @@
 package com.example.model;
 
-import com.example.model.CarCamEventBuilder;
 import io.soabase.recordbuilder.core.RecordBuilder;
 
 @RecordBuilder
@@ -14,7 +13,7 @@ public record CarCamEvent(String carID,
                           Float plateConfidence,
                           String carMoveDirection) implements CarCamEventBuilder.With {
 
-    public static CarCamEvent fromRawEvent(Root rawEvent){
+    public static CarCamEvent fromRawEvent(RawCarCamEventRoot rawEvent){
         return new CarCamEvent(        rawEvent.buffer().carID(),
                 rawEvent.buffer().carState(),
                 rawEvent.buffer().plateUTF8(),

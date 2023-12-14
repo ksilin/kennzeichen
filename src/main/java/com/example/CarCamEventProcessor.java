@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE;
+
 public class CarCamEventProcessor implements Processor<String, CarCamEvent, String, CarStateChanged> {
 
     Logger log = Logger.getLogger(CarCamEventProcessor.class);
@@ -26,7 +28,7 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
     public void init(ProcessorContext<String, CarStateChanged> context) {
         Processor.super.init(context);
         ctx = context;
-        perPlateStore = context.getStateStore(CarCamEventTopologyProducer.PER_PLATE_STORE);
+        perPlateStore = context.getStateStore(PER_PLATE_STORE);
     }
 
     @Override
@@ -40,7 +42,7 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
 
         String carState = record.value().carState();
 
-        if(carState.equals("new")){
+        if (carState.equals("new")) {
             if (perPlateAggregation == null) {
                 log.infof("plate %s new", plateUtf8);
                 perPlateAggregation = CarCamEventAggregationBuilder.CarCamEventAggregation(List.of(record.value()));
@@ -51,27 +53,27 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
             }
             perPlateStore.put(plateUtf8, perPlateAggregation);
             log.warn("per plate aggregation size " + perPlateAggregation.events().size());
-        } else if(carState.equals("update")) {
+        } else if (carState.equals("update")) {
 
             log.infof("update for %s, aggregation found: %b ", plateUtf8, perPlateAggregation != null);
 
-            if(perPlateAggregation == null) {
+            if (perPlateAggregation == null) {
 
                 AtomicReference<CarCamEventAggregation> bestMatch = new AtomicReference<>();
                 AtomicReference<Double> bestSimilarity = new AtomicReference<>(0.0);
 
-                try(var it = perPlateStore.all()) {
+                try (var it = perPlateStore.all()) {
                     it.forEachRemaining(entry -> {
-                                double sim = jw.similarity(plateUtf8, entry.key);
-                                if (sim > bestSimilarity.get()) {
-                                    bestSimilarity.set(sim);
-                                    bestMatch.set(entry.value);
-                                }
-                            }
+                                            double sim = jw.similarity(plateUtf8, entry.key);
+                                            if (sim > bestSimilarity.get()) {
+                                                bestSimilarity.set(sim);
+                                                bestMatch.set(entry.value);
+                                            }
+                                        }
                     );
                 }
                 //
-                if(bestMatch.get() != null && !bestMatch.get().events().isEmpty()) {
+                if (bestMatch.get() != null && !bestMatch.get().events().isEmpty()) {
                     log.infof("similarity between %s and %s %s", plateUtf8, bestMatch.get().events().get(0).plateUTF8(), bestSimilarity.get().toString());
                 }
             } else {
@@ -81,17 +83,17 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
                 perPlateAggregation = CarCamEventAggregationBuilder.from(perPlateAggregation).withEvents(perPlateAggregation.events());
             }
 
-        } else if(carState.equals("lost")){
+        } else if (carState.equals("lost")) {
             log.warnv("lost car state for plate {0}", plateUtf8);
         } else {
             log.errorv("unknown car state {0} for plate ", carState, record.value().plateUTF8());
         }
 
         // TODO - CarStateChanged produced later downstream
-//        if (perPlateAggregation != null && perPlateAggregation.events().size() > 2) {
-//            Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
-//            ctx.forward(rec);
-//        }
+        //        if (perPlateAggregation != null && perPlateAggregation.events().size() > 2) {
+        //            Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
+        //            ctx.forward(rec);
+        //        }
     }
 
     @Override

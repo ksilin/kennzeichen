@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
+import static com.example.KennzeichenSerdes.*;
+import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @QuarkusTest
@@ -39,7 +41,7 @@ class CarStatusChangedPunctuateTest {
     }
 
     @Test
-    void happyCaseOuterSensorsFirstThenInnerSensors(){
+    void happyCaseOuterSensorsFirstThenInnerSensors() {
         // {"ts":1701437161585,"state":"new","plate":"XXYYZZ","cam":"einfahrt_front","dir":"unknown"}
         // {"ts":1701437161705,"state":"update","plate":"XXYYZZ","cam":"einfahrt_front","dir":"in"}
         // {"ts":1701437173126,"state":"new","plate":"XXYYZZ","cam":"einfahrt_heck","dir":"unknown"}
@@ -52,7 +54,7 @@ class CarStatusChangedPunctuateTest {
         var eventHeckUnknownNew = eventFrontUnknownNew.withSensorProviderID("einfahrt_heck").withCaptureTimestamp(now + 10000);
         var eventHeckInUpdate = eventFrontUnknownNew.withCarMoveDirection("in").withCarState("update").withSensorProviderID("einfahrt_heck").withCaptureTimestamp(now + 11000);
 
-       CarCamEventAggregation agg = CarCamEventAggregationBuilder.CarCamEventAggregation(List.of(eventFrontUnknownNew, eventFrontInUpdate, eventHeckUnknownNew, eventHeckInUpdate));
+        CarCamEventAggregation agg = CarCamEventAggregationBuilder.CarCamEventAggregation(List.of(eventFrontUnknownNew, eventFrontInUpdate, eventHeckUnknownNew, eventHeckInUpdate));
 
         var carStateChange = carStateFromAggregation(agg);
 
@@ -60,15 +62,15 @@ class CarStatusChangedPunctuateTest {
     }
 
 
-    private CarStateChanged carStateFromAggregation(CarCamEventAggregation agg){
+    private CarStateChanged carStateFromAggregation(CarCamEventAggregation agg) {
 
         var events = agg.events();
 
         var directions = events.stream().map(CarCamEvent::carMoveDirection).filter(e -> !e.equals("unknown")).collect(Collectors.toUnmodifiableList());
 
         String state = "UNKNOWN";
-        if(!directions.isEmpty()){
-            state = directions.getFirst().equals("in")? "EINFAHRT" : "AUSFAHRT";
+        if (!directions.isEmpty()) {
+            state = directions.getFirst().equals("in") ? "EINFAHRT" : "AUSFAHRT";
         }
 
         // TODO - count by group
@@ -82,9 +84,9 @@ class CarStatusChangedPunctuateTest {
 
         var testDriver = new TopologyTestDriver(topology, props);
 
-        TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, CarCamEventTopologyProducer.stringSerde.deserializer(), CarCamEventTopologyProducer.carStateChangedSerde.deserializer());
+        TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, STRING_SERDE.deserializer(), CAR_STATE_CHANGED_SERDE.deserializer());
 
-         KeyValueStore<String, CarCamEventAggregation> perPlateStore = testDriver.getKeyValueStore(CarCamEventTopologyProducer.PER_PLATE_STORE);
+        KeyValueStore<String, CarCamEventAggregation> perPlateStore = testDriver.getKeyValueStore(PER_PLATE_STORE);
 
         long now = Instant.now().toEpochMilli();
 
@@ -112,19 +114,19 @@ class CarStatusChangedPunctuateTest {
         testDriver.close();
     }
 
-    Topology makeTestTopology(){
+    Topology makeTestTopology() {
 
-        var storeBuilder = CarCamEventTopologyProducer.makePerPlateStore();
+        var storeBuilder = KennzeichenTopologyProducer.makePerPlateStore();
 
-        var builder =  new StreamsBuilder();
+        var builder = new StreamsBuilder();
         builder.addStateStore(storeBuilder);
-        ProcessorSupplier<String, CarCamEvent, String, CarStateChanged> processorSupplier =  () -> new CarStatusChangedPunctuateProcessor(1000L);
-        KStream<String, CarCamEvent> stream = builder.stream(inputTopicName, Consumed.with(Serdes.String(), CarCamEventTopologyProducer.carCameraEventSerde));
+        ProcessorSupplier<String, CarCamEvent, String, CarStateChanged> processorSupplier = () -> new CarStatusChangedPunctuateProcessor(1000L);
+        KStream<String, CarCamEvent> stream = builder.stream(inputTopicName, Consumed.with(Serdes.String(), CAR_CAM_EVENT_SERDE));
         stream
-                .process(processorSupplier, Named.as("carStateChangedPunctuator"), CarCamEventTopologyProducer.PER_PLATE_STORE)
-                .to(outputTopicName, Produced.with(Serdes.String(), CarCamEventTopologyProducer.CarStateChangedSerde));
+                .process(processorSupplier, Named.as("carStateChangedPunctuator"), PER_PLATE_STORE)
+                .to(outputTopicName, Produced.with(Serdes.String(), CAR_STATE_CHANGED_SERDE));
 
-      return builder.build();
+        return builder.build();
     }
 
 
