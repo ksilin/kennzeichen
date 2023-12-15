@@ -33,8 +33,6 @@ public class KennzeichenTopologyProducer {
     public static Branched<String, CarCamEvent> branchedToLowConfidenceTopic = Branched.withConsumer((lowConfidenceStream -> lowConfidenceStream.to(LOW_CONFIDENCE_TOPIC_NAME)), LOW_CONFIDENCE_BRANCH_NAME);
 
 
-
-
     @Produces
     public Topology makeTopology(@ConfigProperty(name = "kennzeichen.source-topic", defaultValue = "carCamEventsSource") String sourceTopic,
                                  @ConfigProperty(name = "kennzeichen.target-topic", defaultValue = "carStatusChanged") String targetTopic) {
@@ -64,9 +62,9 @@ public class KennzeichenTopologyProducer {
 
         KStream<String, CarCamEvent> highConfidenceBranch = branchMap.get(CONFIDENCE_SPLIT_PROCESSOR_NAME + DEFAULT_BRANCH_NAME);
 
-        KStream<String, CarStateChanged> processed = highConfidenceBranch.process(CarCamEventProcessor::new, Named.as(CAR_CAM_EVENT_PROCESSOR_NAME), PER_PLATE_STORE_NAME);
+        highConfidenceBranch.process(CarCamEventProcessor::new, Named.as(CAR_CAM_EVENT_PROCESSOR_NAME), PER_PLATE_STORE_NAME);
 
-        highConfidenceBranch.process(() -> new CarStateChangedPunctuateProcessor(carCamEventTimeoutThresholdMs), Named.as(CAR_STATE_CHANGED_PUNCTUATE_PROCESSOR_NAME), PER_PLATE_STORE_NAME);
+        KStream<String, CarStateChanged> processed = highConfidenceBranch.process(() -> new CarStateChangedPunctuateProcessor(carCamEventTimeoutThresholdMs), Named.as(CAR_STATE_CHANGED_PUNCTUATE_PROCESSOR_NAME), PER_PLATE_STORE_NAME);
 
         processed.to(outputTopicName, carStateChangedProduced);
 
