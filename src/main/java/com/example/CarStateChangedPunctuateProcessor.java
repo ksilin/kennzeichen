@@ -14,17 +14,17 @@ import org.jboss.logging.Logger;
 
 import java.time.Duration;
 
-import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE;
+import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE_NAME;
 
-public class CarStatusChangedPunctuateProcessor implements Processor<String, CarCamEvent, String, CarStateChanged> {
+public class CarStateChangedPunctuateProcessor implements Processor<String, CarCamEvent, String, CarStateChanged> {
 
-    Logger log = Logger.getLogger(CarStatusChangedPunctuateProcessor.class);
+    Logger log = Logger.getLogger(CarStateChangedPunctuateProcessor.class);
 
     private ProcessorContext<String, CarStateChanged> ctx;
     private KeyValueStore<String, CarCamEventAggregation> perPlateStore;
     public Long eventTimeoutThreshold;
 
-    public CarStatusChangedPunctuateProcessor(Long eventTimeoutThreshold) {
+    public CarStateChangedPunctuateProcessor(Long eventTimeoutThreshold) {
         this.eventTimeoutThreshold = eventTimeoutThreshold;
     }
 
@@ -33,7 +33,7 @@ public class CarStatusChangedPunctuateProcessor implements Processor<String, Car
     public void init(ProcessorContext<String, CarStateChanged> context) {
         Processor.super.init(context);
         ctx = context;
-        perPlateStore = context.getStateStore(PER_PLATE_STORE);
+        perPlateStore = context.getStateStore(PER_PLATE_STORE_NAME);
 
         Punctuator punctuator = timestamp -> {
             log.info("Running punctuator at " + timestamp);

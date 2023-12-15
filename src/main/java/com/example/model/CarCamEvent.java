@@ -26,5 +26,9 @@ public record CarCamEvent(String carID,
         );
     }
 
+    public static final String STATE_NEW = "new";
+    public static final String STATE_UPDATE = "update";
+    public static final String STATE_UNKNOWN = "unknown";
+
 
 }

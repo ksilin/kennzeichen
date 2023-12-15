@@ -1,9 +1,6 @@
 package com.example;
 
-import com.example.model.CarCamEvent;
-import com.example.model.CarCamEventAggregation;
-import com.example.model.CarStateChanged;
-import com.example.model.RawCarCamEventRoot;
+import com.example.model.*;
 import com.example.util.ListOfRawCarCamEventRootsSerde;
 import io.quarkus.kafka.client.serialization.ObjectMapperSerde;
 import org.apache.kafka.common.serialization.Serde;
@@ -14,6 +11,8 @@ import java.util.List;
 public class KennzeichenSerdes {
 
     public static final Serde<CarCamEvent> CAR_CAM_EVENT_SERDE = new ObjectMapperSerde<>(CarCamEvent.class);
+
+    public static final Serde<Buffer> BUFFER_EVENT_SERDE = new ObjectMapperSerde<>(Buffer.class);
     public static final Serde<CarStateChanged> CAR_STATE_CHANGED_SERDE = new ObjectMapperSerde<>(CarStateChanged.class);
     public static final Serde<CarCamEventAggregation> CAR_CAM_EVENT_AGGREGATION_SERDE = new ObjectMapperSerde<>(CarCamEventAggregation.class);
     public static final Serde<RawCarCamEventRoot> RAW_CAR_CAM_EVENT_ROOT_SERDE = new ObjectMapperSerde<>(RawCarCamEventRoot.class);

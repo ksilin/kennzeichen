@@ -32,4 +32,10 @@ public record CarCamEventAggregation(List<CarCamEvent> events) implements CarCam
         return l.map(CarCamEvent::captureTimestamp).orElse(0L);
     }
 
+    public CarCamEventAggregation withAddedEvent(CarCamEvent event) {
+        List<CarCamEvent> e = events;
+        e.add(event);
+        return CarCamEventAggregation.from(e);
+    }
+
 }

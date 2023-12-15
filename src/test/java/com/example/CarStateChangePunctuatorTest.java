@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Properties;
 
 import static com.example.KennzeichenSerdes.*;
-import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE;
+import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @QuarkusTest
@@ -42,7 +42,7 @@ class CarStateChangePunctuatorTest {
         Topology topology = makeTestTopology();
         TopologyTestDriver testDriver = new TopologyTestDriver(topology, props);
         TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, STRING_SERDE.deserializer(), CAR_STATE_CHANGED_SERDE.deserializer());
-        KeyValueStore<String, CarCamEventAggregation> perPlateStore = testDriver.getKeyValueStore(PER_PLATE_STORE);
+        KeyValueStore<String, CarCamEventAggregation> perPlateStore = testDriver.getKeyValueStore(PER_PLATE_STORE_NAME);
 
         long now = Instant.now().toEpochMilli();
 
@@ -80,10 +80,10 @@ class CarStateChangePunctuatorTest {
 
         var builder = new StreamsBuilder();
         builder.addStateStore(storeBuilder);
-        ProcessorSupplier<String, CarCamEvent, String, CarStateChanged> processorSupplier = () -> new CarStatusChangedPunctuateProcessor(1000L);
+        ProcessorSupplier<String, CarCamEvent, String, CarStateChanged> processorSupplier = () -> new CarStateChangedPunctuateProcessor(1000L);
         KStream<String, CarCamEvent> stream = builder.stream(inputTopicName, Consumed.with(Serdes.String(), CAR_CAM_EVENT_SERDE));
         stream
-                .process(processorSupplier, Named.as("carStateChangedPunctuator"), PER_PLATE_STORE)
+                .process(processorSupplier, Named.as("carStateChangedPunctuator"), PER_PLATE_STORE_NAME)
                 .to(outputTopicName, Produced.with(Serdes.String(), CAR_STATE_CHANGED_SERDE));
 
         return builder.build();

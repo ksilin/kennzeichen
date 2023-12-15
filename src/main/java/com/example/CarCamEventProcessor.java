@@ -1,6 +1,7 @@
 package com.example;
 
 import com.example.model.*;
+import com.example.util.SimilarPlates;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
@@ -10,10 +11,11 @@ import org.jboss.logging.Logger;
 import info.debatty.java.stringsimilarity.JaroWinkler;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE;
+import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE_NAME;
 
 public class CarCamEventProcessor implements Processor<String, CarCamEvent, String, CarStateChanged> {
 
@@ -22,13 +24,13 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
     private ProcessorContext<String, CarStateChanged> ctx;
     private KeyValueStore<String, CarCamEventAggregation> perPlateStore;
 
-    private final JaroWinkler jw = new JaroWinkler();
+    private static final JaroWinkler jw = new JaroWinkler();
 
     @Override
     public void init(ProcessorContext<String, CarStateChanged> context) {
         Processor.super.init(context);
         ctx = context;
-        perPlateStore = context.getStateStore(PER_PLATE_STORE);
+        perPlateStore = context.getStateStore(PER_PLATE_STORE_NAME);
     }
 
     @Override
@@ -44,12 +46,11 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
 
         if (carState.equals("new")) {
             if (perPlateAggregation == null) {
-                log.infof("plate %s new", plateUtf8);
+                log.infof("plate %s is new, creating a new aggregation", plateUtf8);
                 perPlateAggregation = CarCamEventAggregationBuilder.CarCamEventAggregation(List.of(record.value()));
             } else {
-                log.infof("plate %s new, but aggregation exists: ", plateUtf8, perPlateAggregation.events().stream().map(CarCamEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
-                perPlateAggregation.events().add(record.value());
-                perPlateAggregation = CarCamEventAggregationBuilder.from(perPlateAggregation).withEvents(perPlateAggregation.events());
+                log.infof("event for plate %s has state new, but aggregation exists: %s", plateUtf8, perPlateAggregation.events().stream().map(CarCamEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
+                perPlateAggregation = perPlateAggregation.withAddedEvent(record.value());
             }
             perPlateStore.put(plateUtf8, perPlateAggregation);
             log.warn("per plate aggregation size " + perPlateAggregation.events().size());
@@ -59,27 +60,25 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
 
             if (perPlateAggregation == null) {
 
-                AtomicReference<CarCamEventAggregation> bestMatch = new AtomicReference<>();
-                AtomicReference<Double> bestSimilarity = new AtomicReference<>(0.0);
+                var similarPlates = getSimilarPlates(plateUtf8, perPlateStore);
+                TreeMap<Double, CarCamEventAggregation> aggregationsForSimilarPlates = similarPlates.getAggregationsForSimilarPlates();
+                Map.Entry<Double, CarCamEventAggregation> firstEntry = aggregationsForSimilarPlates.firstEntry();
 
-                try (var it = perPlateStore.all()) {
-                    it.forEachRemaining(entry -> {
-                                            double sim = jw.similarity(plateUtf8, entry.key);
-                                            if (sim > bestSimilarity.get()) {
-                                                bestSimilarity.set(sim);
-                                                bestMatch.set(entry.value);
-                                            }
-                                        }
-                    );
-                }
-                //
-                if (bestMatch.get() != null && !bestMatch.get().events().isEmpty()) {
-                    log.infof("similarity between %s and %s %s", plateUtf8, bestMatch.get().events().get(0).plateUTF8(), bestSimilarity.get().toString());
+                if (firstEntry != null && !firstEntry.getValue().events().isEmpty()) {
+                    String bestMatchPlate = firstEntry.getValue().events().get(0).plateUTF8();
+                    log.infof("similarity between %s and %s %s", plateUtf8, bestMatchPlate, firstEntry.getKey());
+
+                    // TODO - use cutoff if no plate is reasonably similar
+
+                    log.infof("updating aggregation for %s with new event with plate %s ", bestMatchPlate, plateUtf8);
+                    // TODO - evaluate if store is necessary or whether we just update in store
+                    perPlateStore.put(bestMatchPlate,  firstEntry.getValue().withAddedEvent(record.value()));
                 }
             } else {
                 log.infof("plate %s updated, and aggregation exists: ", plateUtf8, perPlateAggregation.events().stream().map(CarCamEvent::sensorProviderID).collect(Collectors.toUnmodifiableSet()));
                 log.infof("aggregation carIds: %s", perPlateAggregation.events().stream().map(CarCamEvent::carID).collect(Collectors.toUnmodifiableSet()).toString());
                 perPlateAggregation.events().add(record.value());
+                // TODO - check if assignment is necessary
                 perPlateAggregation = CarCamEventAggregationBuilder.from(perPlateAggregation).withEvents(perPlateAggregation.events());
             }
 
@@ -94,6 +93,17 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
         //            Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
         //            ctx.forward(rec);
         //        }
+    }
+
+    public static SimilarPlates getSimilarPlates(String plate, KeyValueStore<String, CarCamEventAggregation> store) {
+
+        var similarPlates = new SimilarPlates(3);
+
+        try (var it = store.all()) {
+            it.forEachRemaining(entry -> similarPlates.add(jw.similarity(plate, entry.key), entry.value)
+            );
+        }
+        return similarPlates;
     }
 
     @Override
