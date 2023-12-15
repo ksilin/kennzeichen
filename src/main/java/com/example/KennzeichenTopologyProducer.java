@@ -48,8 +48,6 @@ public class KennzeichenTopologyProducer {
         var builder = new StreamsBuilder();
         builder.addStateStore(perPlateStoreBuilder);
 
-
-
         KStream<String, Buffer> streamRaw = builder.stream(inputTopicName, stringBufferConsumed);
 
         KStream<String, CarCamEvent> stream = streamRaw.mapValues(CarCamEvent::fromBuffer);

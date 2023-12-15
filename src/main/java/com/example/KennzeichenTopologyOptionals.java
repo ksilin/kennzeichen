@@ -3,7 +3,6 @@ package com.example;
 import com.example.model.Buffer;
 import com.example.model.CarCamEvent;
 import com.example.model.CarStateChanged;
-import com.example.model.RawCarCamEventRoot;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Repartitioned;
