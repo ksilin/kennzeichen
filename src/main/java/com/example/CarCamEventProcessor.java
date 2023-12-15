@@ -16,6 +16,8 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE_NAME;
+import static com.example.model.CarCamEvent.STATE_NEW;
+import static com.example.model.CarCamEvent.STATE_UPDATE;
 
 public class CarCamEventProcessor implements Processor<String, CarCamEvent, String, CarStateChanged> {
 
@@ -44,7 +46,7 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
 
         String carState = record.value().carState();
 
-        if (carState.equals("new")) {
+        if (carState.equals(STATE_NEW)) {
             if (perPlateAggregation == null) {
                 log.infof("plate %s is new, creating a new aggregation", plateUtf8);
                 perPlateAggregation = CarCamEventAggregationBuilder.CarCamEventAggregation(List.of(record.value()));
@@ -54,7 +56,7 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
             }
             perPlateStore.put(plateUtf8, perPlateAggregation);
             log.warn("per plate aggregation size " + perPlateAggregation.events().size());
-        } else if (carState.equals("update")) {
+        } else if (carState.equals(STATE_UPDATE)) {
 
             log.infof("update for %s, aggregation found: %b ", plateUtf8, perPlateAggregation != null);
 
@@ -83,16 +85,10 @@ public class CarCamEventProcessor implements Processor<String, CarCamEvent, Stri
             }
 
         } else if (carState.equals("lost")) {
-            log.warnv("lost car state for plate {0}", plateUtf8);
+            log.warnv("lost car state for plate {0}, disregarding", plateUtf8);
         } else {
             log.errorv("unknown car state {0} for plate ", carState, record.value().plateUTF8());
         }
-
-        // TODO - CarStateChanged produced later downstream
-        //        if (perPlateAggregation != null && perPlateAggregation.events().size() > 2) {
-        //            Record<String, CarStateChanged> rec = new Record<>(plateUtf8, CarStateChangedBuilder.CarStateChanged(plateUtf8, "ENTERED"), ctx.currentStreamTimeMs());
-        //            ctx.forward(rec);
-        //        }
     }
 
     public static SimilarPlates getSimilarPlates(String plate, KeyValueStore<String, CarCamEventAggregation> store) {

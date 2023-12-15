@@ -139,10 +139,11 @@ class CarCamEventProcessorTest {
             TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, STRING_SERDE.deserializer(), CAR_STATE_CHANGED_SERDE.deserializer());
             KeyValueStore<String, CarCamEventAggregation> perPlateStore = testDriver.getKeyValueStore(PER_PLATE_STORE_NAME);
 
-            // preparing the state store
+            // putting new events the state store
             perPlateStore.put(plate1, CarCamEventAggregation.from(List.of(event1)));
             perPlateStore.put(plate2, CarCamEventAggregation.from(List.of(event2)));
 
+            // piping additional new events into topic
             inputTopic.pipeInput(key, event1);
             inputTopic.pipeInput(key, event2);
 

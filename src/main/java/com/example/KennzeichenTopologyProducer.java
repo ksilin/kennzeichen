@@ -28,6 +28,7 @@ public class KennzeichenTopologyProducer {
     public static final float plateConfidenceCutoff = 0.6f;
     public static long carCamEventTimeoutThresholdMs = 1000L;
 
+    // TODO - expand with regex for legal plates
     public static final Predicate<String, CarCamEvent> plateConfidencePredicate = (k, v) -> v.plateConfidence() < plateConfidenceCutoff;
 
     public static Branched<String, CarCamEvent> branchedToLowConfidenceTopic = Branched.withConsumer((lowConfidenceStream -> lowConfidenceStream.to(LOW_CONFIDENCE_TOPIC_NAME)), LOW_CONFIDENCE_BRANCH_NAME);

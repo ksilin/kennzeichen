@@ -40,8 +40,10 @@ public class CarStateChangedPunctuateProcessor implements Processor<String, CarC
 
             try (var it = perPlateStore.all()) {
                 it.forEachRemaining(aggKV -> {
-                    var eventTimedOut = timestamp - aggKV.value.lastEventTimestamp() > eventTimeoutThreshold;
+                    long lastEventTimestamp = aggKV.value.lastEventTimestamp();
+                    var eventTimedOut = timestamp - lastEventTimestamp > eventTimeoutThreshold;
 
+                    // TODO - add real logic for timeout case
                     if (eventTimedOut) {
                         log.warnv("event chain timed out. Status change event will be dispatched: {0}", aggKV);
                         Record<String, CarStateChanged> rec = new Record<>(aggKV.key, CarStateChangedBuilder.CarStateChanged(aggKV.key, "ENTERED"), timestamp);

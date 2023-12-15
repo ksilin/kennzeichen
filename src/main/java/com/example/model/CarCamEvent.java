@@ -17,7 +17,6 @@ public record CarCamEvent(String carID,
         return fromBuffer(rawEvent.buffer());
     }
 
-    // TODO - extract Niederlassung from sensorProviderID
     public static CarCamEvent fromBuffer(Buffer buffer) {
         return new CarCamEvent(buffer.carID(),
                                buffer.carState(),
@@ -25,7 +24,8 @@ public record CarCamEvent(String carID,
                                buffer.plateCountry(),
                                Long.parseLong(buffer.capture_timestamp()),
                                buffer.sensorProviderID(),
-                               "",
+                               // extract three chars as Niederlassung from sensorProviderID
+                               buffer.sensorProviderID().substring(0,2),
                                Float.parseFloat(buffer.plateConfidence()),
                                buffer.carMoveDirection()
         );
