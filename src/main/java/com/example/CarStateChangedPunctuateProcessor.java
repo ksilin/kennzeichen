@@ -13,6 +13,12 @@ import org.apache.kafka.streams.state.KeyValueStore;
 import org.jboss.logging.Logger;
 
 import java.time.Duration;
+import java.util.Map;
+import java.util.Set;
+import java.util.List;
+import java.util.TreeMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.example.KennzeichenTopologyNames.PER_PLATE_STORE_NAME;
 
@@ -46,7 +52,13 @@ public class CarStateChangedPunctuateProcessor implements Processor<String, CarC
                     // TODO - add real logic for timeout case
                     if (eventTimedOut) {
                         log.warnv("event chain timed out. Status change event will be dispatched: {0}", aggKV);
-                        Record<String, CarStateChanged> rec = new Record<>(aggKV.key, CarStateChangedBuilder.CarStateChanged(aggKV.key, "ENTERED"), timestamp);
+
+                        // TODO - extract direction
+                        List<String> directions = aggKV.value.events().stream().map(CarCamEvent::carMoveDirection).toList();
+
+                        String state = directionToState(directions);
+
+                        Record<String, CarStateChanged> rec = new Record<>(aggKV.key, CarStateChangedBuilder.CarStateChanged(aggKV.key, state), timestamp);
                         ctx.forward(rec);
                         perPlateStore.delete(aggKV.key);
                     }
@@ -59,6 +71,14 @@ public class CarStateChangedPunctuateProcessor implements Processor<String, CarC
     @Override
     public void process(Record<String, CarCamEvent> record) {
         log.debugv("punctuator process. ignoring record: {0}", record);
+    }
+
+    // TODO - test
+    String directionToState(List<String> directions) {
+
+        Map<String, Long> countedDriections = directions.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        String state = countedDriections.entrySet().stream().max(Map.Entry.comparingByValue()).map(max ->  max.getKey().equals("in") ? "ENTERED" : "EXITED" ).orElse("UNKNOWN");
+       return state;
     }
 
     @Override

@@ -15,9 +15,5 @@ public class KennzeichenSerdes {
     public static final Serde<Buffer> BUFFER_EVENT_SERDE = new ObjectMapperSerde<>(Buffer.class);
     public static final Serde<CarStateChanged> CAR_STATE_CHANGED_SERDE = new ObjectMapperSerde<>(CarStateChanged.class);
     public static final Serde<CarCamEventAggregation> CAR_CAM_EVENT_AGGREGATION_SERDE = new ObjectMapperSerde<>(CarCamEventAggregation.class);
-    public static final Serde<RawCarCamEventRoot> RAW_CAR_CAM_EVENT_ROOT_SERDE = new ObjectMapperSerde<>(RawCarCamEventRoot.class);
-
-    public static final Serde<List<RawCarCamEventRoot>> RAW_EVENT_LIST_SERDE = new ListOfRawCarCamEventRootsSerde();
-
     public static final Serde<String> STRING_SERDE = Serdes.String();
 }
