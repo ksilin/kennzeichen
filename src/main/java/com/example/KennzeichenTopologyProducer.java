@@ -1,9 +1,6 @@
 package com.example;
 
-import com.example.model.CarCamEvent;
-import com.example.model.CarCamEventAggregation;
-import com.example.model.CarStateChanged;
-import com.example.model.RawCarCamEventRoot;
+import com.example.model.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -35,7 +32,7 @@ public class KennzeichenTopologyProducer {
 
     public static Branched<String, CarCamEvent> branchedToLowConfidenceTopic = Branched.withConsumer((lowConfidenceStream -> lowConfidenceStream.to(LOW_CONFIDENCE_TOPIC_NAME)), LOW_CONFIDENCE_BRANCH_NAME);
 
-    public static final Consumed<String, RawCarCamEventRoot> stringRawCarCamEventRootConsumed = Consumed.with(STRING_SERDE, RAW_CAR_CAM_EVENT_ROOT_SERDE);
+
 
 
     @Produces
@@ -53,9 +50,9 @@ public class KennzeichenTopologyProducer {
 
 
 
-        KStream<String, RawCarCamEventRoot> streamRaw = builder.stream(inputTopicName, stringRawCarCamEventRootConsumed);
+        KStream<String, Buffer> streamRaw = builder.stream(inputTopicName, stringBufferConsumed);
 
-        KStream<String, CarCamEvent> stream = streamRaw.mapValues(CarCamEvent::fromRawEvent);
+        KStream<String, CarCamEvent> stream = streamRaw.mapValues(CarCamEvent::fromBuffer);
 
         KStream<String, CarCamEvent> stringCarCameraEventKStream = stream.selectKey((k, v) -> v.sensorNdl());
         KStream<String, CarCamEvent> repartitioned = stringCarCameraEventKStream.repartition(carCamEventRepartitioned);// add Repartitioned if required
@@ -83,8 +80,8 @@ public class KennzeichenTopologyProducer {
         var builder = new StreamsBuilder();
         builder.addStateStore(makePerPlateStore());
 
-        KStream<String, CarCamEvent> highConfidenceBranch = builder.stream(inputTopicName, stringRawCarCamEventRootConsumed)
-                .mapValues(CarCamEvent::fromRawEvent)
+        KStream<String, CarCamEvent> highConfidenceBranch = builder.stream(inputTopicName, stringBufferConsumed)
+                .mapValues(CarCamEvent::fromBuffer)
                 .selectKey((k, v) -> v.sensorNdl())
                 .repartition(carCamEventRepartitioned)
                 .peek((k, v) -> log.infov("key: {0}, value: {1}", k, v)).split(Named.as(CONFIDENCE_SPLIT_PROCESSOR_NAME))

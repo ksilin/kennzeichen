@@ -39,39 +39,37 @@ class CarStateChangePunctuatorTest {
     @Test
     void punctuatorMustPushCarChangeEventAfterTimeoutTest() {
 
-        Topology topology = makeTestTopology();
-        TopologyTestDriver testDriver = new TopologyTestDriver(topology, props);
-        TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, STRING_SERDE.deserializer(), CAR_STATE_CHANGED_SERDE.deserializer());
-        KeyValueStore<String, CarCamEventAggregation> perPlateStore = testDriver.getKeyValueStore(PER_PLATE_STORE_NAME);
-
         long now = Instant.now().toEpochMilli();
-
         String carID = "123";
         String plateCompleteSession = "ABCDEF";
-        var eventCompleteSession = CarCamEventBuilder.CarCamEvent(carID, "new", plateCompleteSession, "DEU", now, "front", "FFF", 0.6f, "out");
-
-        perPlateStore.put(plateCompleteSession, CarCamEventAggregation.from(List.of(eventCompleteSession)));
-
         String plateOngoingSession = "XYZ";
 
-        var eventOngoingSession = eventCompleteSession.withCaptureTimestamp(now + 10000).withPlateUTF8(plateOngoingSession);
-        perPlateStore.put(plateOngoingSession, CarCamEventAggregation.from(List.of(eventOngoingSession)));
+        var eventCompleteSession = CarCamEventBuilder.CarCamEvent(carID, "new", plateCompleteSession, "DEU", now, "front", "FFF", 0.6f, "out");
 
-        // trigger punctuator
-        testDriver.advanceWallClockTime(Duration.ofSeconds(10));
+        try(TopologyTestDriver testDriver = new TopologyTestDriver(makeTestTopology(), props)) {
+            TestOutputTopic<String, CarStateChanged> outputTopic = testDriver.createOutputTopic(outputTopicName, STRING_SERDE.deserializer(), CAR_STATE_CHANGED_SERDE.deserializer());
+            KeyValueStore<String, CarCamEventAggregation> perPlateStore = testDriver.getKeyValueStore(PER_PLATE_STORE_NAME);
 
-        // output topic contains state change event for completed session
-        var carStateChangedEvents = outputTopic.readKeyValuesToList();
-        assertThat(carStateChangedEvents.size()).isEqualTo(1);
-        assertThat(carStateChangedEvents.getFirst().key).isEqualTo(plateCompleteSession);
+            perPlateStore.put(plateCompleteSession, CarCamEventAggregation.from(List.of(eventCompleteSession)));
 
-        // completed session has been removed from state store
-        assertThat(perPlateStore.get(plateCompleteSession)).isNull();
+            var eventOngoingSession = eventCompleteSession.withCaptureTimestamp(now + 10000).withPlateUTF8(plateOngoingSession);
+            perPlateStore.put(plateOngoingSession, CarCamEventAggregation.from(List.of(eventOngoingSession)));
 
-        // ongoing session is still in state store
-        assertThat(perPlateStore.get(plateOngoingSession).events().get(0).plateUTF8()).isEqualTo(plateOngoingSession);
+            // trigger punctuator
+            testDriver.advanceWallClockTime(Duration.ofSeconds(10));
 
-        testDriver.close();
+            // output topic contains state change event for completed session
+            var carStateChangedEvents = outputTopic.readKeyValuesToList();
+            assertThat(carStateChangedEvents.size()).isEqualTo(1);
+            assertThat(carStateChangedEvents.getFirst().key).isEqualTo(plateCompleteSession);
+
+            // completed session has been removed from state store
+            assertThat(perPlateStore.get(plateCompleteSession)).isNull();
+
+            // ongoing session is still in state store
+            assertThat(perPlateStore.get(plateOngoingSession).events().get(0).plateUTF8()).isEqualTo(plateOngoingSession);
+
+        }
     }
 
     Topology makeTestTopology() {
@@ -88,6 +86,5 @@ class CarStateChangePunctuatorTest {
 
         return builder.build();
     }
-
 
 }
